@@ -51,18 +51,19 @@ export const theme = {
   scene: {
     skyBg:     '#011627',   // deep navy
     fog:       '#011627',   // deep navy
-    ground:    '#011627',   // Night owl base
-    road:      '#131f33',   // distinct dark blue asphalt
-    blvd:      '#20334f',   // prominently lighter blue for boulevards
+    ground:    '#c2cad8',   // near-black asphalt base
+    road:      '#0a0f1a',   // dark charcoal asphalt — streets
+    blvd:      '#111927',   // slightly lighter asphalt — boulevards
     kerb:      '#0a111e',
-    line:      '#5f7e97',   // muted blue-grey (no yellow!)
-    lineWhite: '#5f7e97',   // muted blue-grey
-    sidewalk:  '#0a111e',   // dark building block padding
+    line:      '#ffaa00',   // warm yellow centre line (real road marking)
+    lineWhite: '#cccccc',   // soft white lane dividers
+    sidewalk:  '#0079cf',   // concrete grey-blue kerb strip
     
     // Props & Lights
-    lampPost:      '#0b121e',
-    lampBulb:      '#82aaff',
-    lampLight:     0x82aaff,
+    lampPost:      '#2a2f3a',   // matte dark steel
+    lampBulb:      '#ffd36b',   // warm sodium-vapour amber
+    lampLight:     0xffd36b,    // street lamp pool — warm amber
+    lampLightBlvd: 0xffdd88,    // boulevard intersection pool — slightly brighter
     glowPerimeter: 0x011627,
 
     // Building materials
@@ -79,12 +80,13 @@ export const theme = {
 
     // Environmental
     atmosphere: {
-      ambient:     0x102040,
+      ambient:     0x48641f,
       directional: 0x4466aa,
       glowCenter:  0x0033aa,
       star1:       '#ddeeff',
       star2:       '#334466',
       star3:       '#4488bb',
+      test: '#48641f',
     }
   },
 

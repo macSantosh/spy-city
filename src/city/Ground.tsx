@@ -168,8 +168,13 @@ export function Ground() {
             <meshLambertMaterial color={ix.isBlvd ? theme.scene.blvd : theme.scene.road} />
           </mesh>
 
-          {/* Central intersection lamp pooling */}
-          <pointLight position={[0, 9, 0]} color={theme.scene.lampLight} intensity={ix.isBlvd ? 0.7 : 0.4} distance={30} />
+          {/* Central intersection lamp pool — boulevards get wider, warmer pool so traffic reads clearly */}
+          <pointLight
+            position={[0, 9, 0]}
+            color={ix.isBlvd ? theme.scene.lampLightBlvd : theme.scene.lampLight}
+            intensity={ix.isBlvd ? 1.6 : 0.5}
+            distance={ix.isBlvd ? 60 : 32}
+          />
 
           {/* Corner posts */}
           {ix.lamps.map((lamp, id) => (

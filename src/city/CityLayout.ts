@@ -43,6 +43,76 @@ export function getCityBounds() {
   return { width: CITY_WIDTH_UNITS, depth: CITY_DEPTH_UNITS };
 }
 
+// ─── Boulevard metadata ────────────────────────────────────────────────────────
+
+/**
+ * A single boulevard axis (one full road running the length/width of the city).
+ * fixedAxis='x' → vertical boulevard in world space: x is constant, cars run along Z.
+ * fixedAxis='z' → horizontal boulevard: z is constant, cars run along X.
+ */
+export interface BlvdInfo {
+  roadIndex:  number;
+  fixedAxis:  'x' | 'z';
+  worldFixed: number;  // centred world coordinate of the boulevard centre-line
+  runStart:   number;  // world start along the run axis
+  runEnd:     number;  // world end along the run axis
+}
+
+/**
+ * Lane centre offsets from boulevard centre-line for a 4-lane boulevard (26 units wide).
+ * Negative offsets → run in the "negative" direction of the run axis.
+ * Positive offsets → run in the "positive" direction.
+ *
+ * Layout (half-width = 13):
+ *   edge -13 | outer lane -10 | white -8 | inner lane -4 | yellow 0 |
+ *             inner lane +4 | white +8 | outer lane +10 | edge +13
+ */
+export const BLVD_LANE_OFFSETS = [
+  { offset: -10, direction: -1 as const },
+  { offset:  -4, direction: -1 as const },
+  { offset:   4, direction:  1 as const },
+  { offset:  10, direction:  1 as const },
+] as const;
+
+const HALF_W = CITY_WIDTH_UNITS / 2;
+const HALF_D = CITY_DEPTH_UNITS / 2;
+
+/**
+ * Returns all boulevard axes in the city — vertical first, then horizontal.
+ * Coordinates are centred on the world origin (same convention as calcWorldPos).
+ */
+export function getBoulevardAxes(): BlvdInfo[] {
+  const result: BlvdInfo[] = [];
+
+  // Vertical boulevards (fixed x, cars run along Z)
+  for (let i = 0; i <= CITY_COLS; i++) {
+    const geom = getRoadGeometry(i);
+    if (!geom.isBlvd) continue;
+    result.push({
+      roadIndex:  i,
+      fixedAxis:  'x',
+      worldFixed: geom.center - HALF_W,
+      runStart:  -HALF_D,
+      runEnd:     HALF_D,
+    });
+  }
+
+  // Horizontal boulevards (fixed z, cars run along X)
+  for (let i = 0; i <= CITY_ROWS; i++) {
+    const geom = getRoadGeometry(i);
+    if (!geom.isBlvd) continue;
+    result.push({
+      roadIndex:  i,
+      fixedAxis:  'z',
+      worldFixed: geom.center - HALF_D,
+      runStart:  -HALF_W,
+      runEnd:     HALF_W,
+    });
+  }
+
+  return result;
+}
+
 /**
  * Translates a 1D building index into normalized 3D world coordinates.
  */
