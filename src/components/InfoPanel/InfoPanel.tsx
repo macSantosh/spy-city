@@ -5,6 +5,7 @@ import { useCityStore } from '@/store/cityStore';
 import { SECTOR_COLORS } from '@/data/sectors';
 import { theme } from '@/data/theme';
 import { calcSectorMedians } from '@/util/sectorMedians';
+import { fetchWithRetry } from '@/util/fetchWithRetry';
 
 export function InfoPanel() {
   const company = useCityStore((s) => s.selectedCompany);
@@ -32,13 +33,15 @@ export function InfoPanel() {
 
     async function fetchExtended() {
       try {
-        const res = await fetch(`/api/quotes?symbols=${company?.ticker}&endpoint=profile`);
+        const res = await fetchWithRetry(`/api/quotes?symbols=${company?.ticker}`);
         if (!res.ok) throw new Error('Fetch Error');
-        const data = await res.json();
+        const rawData = await res.json();
+        
+        // API returns array, take first element
+        const data = Array.isArray(rawData) ? rawData[0] : rawData;
         
         if (active && data) {
           const met = data.metric?.metric;
-          const prof = data.profile;
           const ext = data.extendedMetrics;
           
           setExtended({
@@ -46,7 +49,7 @@ export function InfoPanel() {
             shares: met?.sharesOutstanding ? met.sharesOutstanding / 1000 : undefined,
             week52High: met?.['52WeekHigh'],
             week52Low: met?.['52WeekLow'],
-            exchange: prof?.exchange
+            exchange: met?.exchange
           });
 
           // Store extended metrics for expanded view

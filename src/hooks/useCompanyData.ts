@@ -6,8 +6,9 @@ import { FALLBACK_COMPANIES } from '@/data/companies';
 import { normalizeSector } from '@/data/sectors';
 import constituentsData from '@/data/constituents.json';
 import type { Company } from '@/data/types';
+import { fetchWithRetry } from '@/util/fetchWithRetry';
 
-const CACHE_KEY = 'spycity_v5'; // Busted cache for chunk refactor
+const CACHE_KEY = 'spycity_v6'; // v6: Bust cache after fixing 503 API error
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 export function useCompanyData() {
@@ -75,7 +76,7 @@ export function useCompanyData() {
         for (let i = 0; i < tickers.length; i++) {
           const chunk = tickers[i];
           try {
-            const batchRes = await fetch(`/api/quotes?symbols=${chunk}`);
+            const batchRes = await fetchWithRetry(`/api/quotes?symbols=${chunk}`);
             if (batchRes.ok) {
               const batchData = await batchRes.json();
               
@@ -86,11 +87,16 @@ export function useCompanyData() {
                 if (idx !== -1 && res.quote) {
                   const price = res.quote.c || 0;
                   
-                  // Modify only price and change; marketCap stays same without metrics available yet
+                  // Merge quote data + extended financial metrics for value score calculation
                   currentCompanies[idx] = {
                     ...currentCompanies[idx],
+                    // Merge extended metrics first (includes marketCapFromAPI)
+                    ...(res.extendedMetrics || {}),
+                    // Then override with quote data
                     price: price,
-                    change: res.quote.dp || 0
+                    change: res.quote.dp || 0,
+                    // Use API market cap if available, otherwise keep existing
+                    marketCap: res.extendedMetrics?.marketCapFromAPI || currentCompanies[idx].marketCap,
                   };
                 }
               });
