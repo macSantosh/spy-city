@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { useCityStore } from '@/store/cityStore';
 import { calcWorldPos, getCityBounds } from '@/city/CityLayout';
 import { SECTOR_COLORS } from '@/data/sectors';
+import { theme } from '@/data/theme';
 
 function lcg(seed: number) {
   return function() {
@@ -26,6 +27,7 @@ export function Minimap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const companies = useCityStore((s) => s.companies);
   const selectedTicker = useCityStore((s) => s.selectedTicker);
+  const getValueScore = useCityStore((s) => s.getValueScore);
   const [dotPos, setDotPos] = useState<{ x: number; y: number } | null>(null);
 
   // Mirrors Buildings.tsx exact layout pipeline procedural seed
@@ -109,6 +111,16 @@ export function Minimap() {
   const selectedCo = useMemo(() => companies.find((c) => c.ticker === selectedTicker), [companies, selectedTicker]);
   const sortedDesc = [...companies].sort((a, b) => b.marketCap - a.marketCap);
   const rank = selectedCo ? sortedDesc.findIndex((c) => c.ticker === selectedCo.ticker) + 1 : 0;
+  
+  const valueScore = selectedCo ? getValueScore(selectedCo.ticker) : undefined;
+
+  // Determine score badge color
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return theme.accent.green;
+    if (score >= 60) return theme.accent.yellow;
+    if (score >= 40) return theme.accent.orange;
+    return theme.accent.red;
+  };
 
   return (
     <div className="minimap-container">
@@ -125,8 +137,23 @@ export function Minimap() {
             </span>
           </div>
           <div className="tooltip-rank">Rank #{rank}</div>
+          
+          {valueScore && (
+            <div className="minimap-score-badge" style={{ 
+              background: `${getScoreColor(valueScore.overall)}22`,
+              border: `2px solid ${getScoreColor(valueScore.overall)}`,
+              color: getScoreColor(valueScore.overall)
+            }}>
+              <div className="score-badge-number">{valueScore.overall}</div>
+              <div className="score-badge-label">VALUE</div>
+              {valueScore.dataCompleteness < 80 && (
+                <div className="score-badge-completeness">{valueScore.dataCompleteness}% data</div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+

@@ -12,7 +12,25 @@ async function fetchTickerData(key: string, symbol: string) {
       ]);
       const quote = quoteRes.ok ? await quoteRes.json() : null;
       const metric = metricRes.ok ? await metricRes.json() : null;
-      return { symbol, quote, metric };
+
+      // Extract extended financial metrics from Finnhub response
+      const m = metric?.metric;
+      const extendedMetrics = m ? {
+        volume10Day: m['10DayAverageTradingVolume'],
+        marketCapFromAPI: m.marketCapitalization ? m.marketCapitalization / 1000 : undefined, // millions → billions
+        peRatio: m.peBasicExclExtraTTM ?? m.peNormalizedAnnual,
+        eps: m.epsTTM,
+        dividendYield: m.dividendYieldIndicatedAnnual,
+        roe: m.roeTTM ?? m.roeRfy,
+        roa: m.roaTTM ?? m.roaRfy,
+        profitMargin: m.netProfitMarginTTM,
+        revenuePerShare: m.revenuePerShareTTM,
+        bookValue: m.bookValuePerShareAnnual,
+        currentRatio: m.currentRatioAnnual,
+        debtToEquity: m['totalDebt/totalEquityAnnual'],
+      } : {};
+
+      return { symbol, quote, metric, extendedMetrics };
     },
     [`finnhub-ticker-${symbol}`],
     { revalidate: 86400 } // Cache for 24h

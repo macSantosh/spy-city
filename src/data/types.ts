@@ -12,6 +12,20 @@ export interface Company {
   week52High?: number;  // USD
   week52Low?: number;   // USD
   exchange?: string;    // 'NASDAQ' | 'NYSE'
+
+  // Financial metrics — populated from Finnhub /stock/metric
+  volume10Day?: number;       // 10-day average trading volume
+  marketCapFromAPI?: number;  // market cap from API (billions) — more accurate than fallback
+  peRatio?: number;           // Price-to-Earnings ratio (TTM preferred)
+  eps?: number;               // Earnings per share (TTM)
+  dividendYield?: number;     // Dividend yield % annual
+  roe?: number;               // Return on Equity % (TTM preferred)
+  roa?: number;               // Return on Assets % (TTM preferred)
+  profitMargin?: number;      // Net profit margin % (TTM)
+  revenuePerShare?: number;   // Revenue per share (TTM)
+  bookValue?: number;         // Book value per share
+  currentRatio?: number;      // Current ratio (annual)
+  debtToEquity?: number;      // Debt/Equity ratio (annual)
 }
 
 export interface BuildingDims {

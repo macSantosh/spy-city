@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Company } from '@/data/types';
+import { calculateAllValueScores, type ValueScore } from '@/util/valueScore';
 
 export type CityMode = 'normal' | 'heatmap' | 'crash';
 
@@ -34,9 +35,13 @@ interface CityState {
   setCompanies: (companies: Company[]) => void;
   loading: boolean;
   setLoading: (loading: boolean) => void;
+
+  // Value scores (calculated from companies)
+  valueScores: Map<string, ValueScore>;
+  getValueScore: (ticker: string) => ValueScore | undefined;
 }
 
-export const useCityStore = create<CityState>((set) => ({
+export const useCityStore = create<CityState>((set, get) => ({
   selectedCompany: null,
   selectedTicker: null,
   setSelected: (company) => set({ selectedCompany: company, selectedTicker: company ? company.ticker : null }),
@@ -60,7 +65,14 @@ export const useCityStore = create<CityState>((set) => ({
   setCityMode: (mode) => set({ cityMode: mode }),
 
   companies: [],
-  setCompanies: (companies) => set({ companies }),
+  setCompanies: (companies) => {
+    // Recalculate value scores whenever companies update
+    const valueScores = calculateAllValueScores(companies);
+    set({ companies, valueScores });
+  },
   loading: true,
   setLoading: (loading) => set({ loading }),
+
+  valueScores: new Map(),
+  getValueScore: (ticker) => get().valueScores.get(ticker),
 }));
