@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S&P 500 City</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;overflow:hidden;font-family:'Share Tech Mono',monospace;color:#fff;}
+canvas{position:fixed;top:0;left:0;z-index:1;}
+
+#loading{position:fixed;inset:0;background:#000814;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity 1s;}
+.ld-title{font-family:'Rajdhani',sans-serif;font-size:38px;font-weight:700;color:#00ccff;letter-spacing:8px;text-shadow:0 0 40px #00ccff88;}
+.ld-sub{font-size:11px;color:#334;letter-spacing:5px;}
+.ld-bar{width:320px;height:1px;background:#0a1830;position:relative;overflow:hidden;}
+.ld-bar::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,#00ccff,transparent);animation:scan 1.2s linear infinite;}
+@keyframes scan{to{left:140%;}}
+
+/* TITLE */
+#hud-title{position:fixed;top:22px;left:22px;z-index:10;pointer-events:none;}
+#hud-title h1{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#00eeff;letter-spacing:5px;text-shadow:0 0 30px #00eeff66;}
+#hud-title p{font-size:9px;color:#223;letter-spacing:4px;margin-top:3px;}
+
+/* STATS */
+#hud-stats{position:fixed;top:22px;right:22px;z-index:10;text-align:right;pointer-events:none;line-height:2;}
+#hud-stats div{font-size:10px;color:#334;letter-spacing:1px;}
+#hud-stats span{color:#00aadd;}
+
+/* SEARCH */
+#search-wrap{position:fixed;top:22px;left:50%;transform:translateX(-50%);z-index:10;width:320px;}
+#search{width:100%;padding:10px 18px;background:rgba(0,6,20,0.93);border:1px solid rgba(0,180,255,0.3);border-radius:8px;color:#cce;font-size:13px;font-family:'Share Tech Mono',monospace;outline:none;letter-spacing:.5px;transition:border .2s,box-shadow .2s;}
+#search:focus{border-color:#00ccff;box-shadow:0 0 20px rgba(0,200,255,0.25);}
+#search::placeholder{color:#223;}
+#drop{position:absolute;top:calc(100% + 6px);left:0;right:0;background:rgba(0,4,16,0.98);border:1px solid rgba(0,160,255,0.3);border-radius:8px;overflow:hidden;display:none;max-height:280px;overflow-y:auto;}
+.di{padding:9px 16px;cursor:pointer;display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(0,80,180,0.15);transition:background .15s;}
+.di:hover{background:rgba(0,140,255,0.12);}
+.di-t{color:#00ccff;font-weight:700;font-size:13px;min-width:54px;}
+.di-n{color:#556;font-size:11px;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 8px;}
+.di-c{font-size:12px;font-weight:700;min-width:52px;text-align:right;}
+.pos{color:#00ff88;} .neg{color:#ff4455;}
+
+/* INFO CARD */
+#info{position:fixed;bottom:24px;left:24px;z-index:10;background:rgba(0,5,18,0.95);border:1px solid rgba(0,180,255,0.25);border-radius:14px;padding:18px 22px;min-width:230px;display:none;backdrop-filter:blur(12px);}
+#info .it{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:#00eeff;}
+#info .in{font-size:11px;color:#446;margin:2px 0 12px;letter-spacing:1px;}
+#info .ip{font-size:22px;color:#ddeeff;}
+#info .ic{font-size:15px;font-weight:700;margin-bottom:10px;}
+#info .il{font-size:11px;color:#335;margin-top:4px;letter-spacing:.5px;}
+#info .isec{display:inline-block;padding:3px 10px;border-radius:4px;font-size:10px;margin-top:10px;letter-spacing:2px;}
+
+/* SECTOR LEGEND */
+#legend{position:fixed;bottom:24px;right:24px;z-index:10;background:rgba(0,5,18,0.88);border:1px solid rgba(0,80,180,0.2);border-radius:10px;padding:12px 16px;font-size:10px;line-height:2;}
+.lg{display:flex;align-items:center;gap:8px;color:#446;}
+.lg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* HINT */
+#hint{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(0,3,12,0.75);border:1px solid rgba(0,80,180,0.15);border-radius:20px;padding:6px 18px;font-size:10px;color:#334;letter-spacing:.5px;white-space:nowrap;pointer-events:none;}
+#hint b{color:#0099bb;}
+
+/* Minimap */
+#minimap{position:fixed;top:80px;right:22px;z-index:10;display:none;}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="ld-title">S&P 500 CITY</div>
+  <div class="ld-sub">GENERATING FINANCIAL SKYLINE</div>
+  <div class="ld-bar"></div>
+</div>
+
+<div id="hud-title">
+  <h1>S&P 500 CITY</h1>
+  <p>MARKET CAPITALIZATION · 3D VISUALIZATION</p>
+</div>
+<div id="hud-stats">
+  <div>COMPANIES <span id="sc">0</span></div>
+  <div>TOTAL CAP <span id="st">$0T</span></div>
+</div>
+
+<div id="search-wrap">
+  <input id="search" type="text" placeholder="⌕  Search ticker or company..." autocomplete="off">
+  <div id="drop"></div>
+</div>
+
+<div id="info">
+  <div class="it" id="ii-t">—</div>
+  <div class="in" id="ii-n">—</div>
+  <div class="ip" id="ii-p">—</div>
+  <div class="ic" id="ii-c">—</div>
+  <div class="il" id="ii-m">—</div>
+  <div class="il" id="ii-r">—</div>
+  <div class="isec" id="ii-s">—</div>
+</div>
+
+<div id="legend"></div>
+
+<div id="hint"><b>DRAG</b> Orbit &nbsp;·&nbsp; <b>SCROLL</b> Zoom &nbsp;·&nbsp; <b>W/S/A/D</b> Fly &nbsp;·&nbsp; <b>CLICK</b> Select &nbsp;·&nbsp; <b>ESC</b> Reset</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// DATA  —  Top 50 S&P 500 companies (approximate 2025/2026 values)
+// In production: replace with live API (FMP, Polygon, Alpha Vantage)
+// ═══════════════════════════════════════════════════════════════════
+const COS = [
+  {t:'AAPL', n:'Apple',              m:3200, p:228.52,c: 1.23, s:'Technology'},
+  {t:'MSFT', n:'Microsoft',          m:3050, p:415.32,c:-0.45, s:'Technology'},
+  {t:'NVDA', n:'NVIDIA',             m:2800, p:875.40,c: 2.15, s:'Technology'},
+  {t:'AMZN', n:'Amazon',             m:2100, p:195.20,c: 0.87, s:'Consumer'},
+  {t:'GOOGL',n:'Alphabet',           m:2000, p:168.42,c:-0.33, s:'Technology'},
+  {t:'META', n:'Meta Platforms',     m:1500, p:540.15,c: 1.52, s:'Technology'},
+  {t:'BRK.B',n:'Berkshire Hathaway', m:980,  p:395.20,c: 0.21, s:'Finance'},
+  {t:'AVGO', n:'Broadcom',           m:780,  p:1628.3,c: 0.95, s:'Technology'},
+  {t:'WMT',  n:'Walmart',            m:780,  p:96.40, c: 0.55, s:'Retail'},
+  {t:'LLY',  n:'Eli Lilly',          m:740,  p:830.50,c:-1.20, s:'Healthcare'},
+  {t:'TSLA', n:'Tesla',              m:720,  p:229.80,c: 3.15, s:'Auto'},
+  {t:'JPM',  n:'JPMorgan Chase',     m:680,  p:215.40,c: 0.42, s:'Finance'},
+  {t:'V',    n:'Visa',               m:550,  p:280.10,c: 0.18, s:'Finance'},
+  {t:'UNH',  n:'UnitedHealth',       m:530,  p:560.20,c:-0.65, s:'Healthcare'},
+  {t:'XOM',  n:'ExxonMobil',         m:500,  p:118.40,c:-0.82, s:'Energy'},
+  {t:'ORCL', n:'Oracle',             m:500,  p:185.20,c: 2.10, s:'Technology'},
+  {t:'MA',   n:'Mastercard',         m:480,  p:490.30,c: 0.35, s:'Finance'},
+  {t:'COST', n:'Costco',             m:400,  p:905.40,c: 0.75, s:'Retail'},
+  {t:'PG',   n:'P&G',                m:410,  p:164.20,c:-0.15, s:'Consumer'},
+  {t:'HD',   n:'Home Depot',         m:395,  p:380.50,c:-0.28, s:'Retail'},
+  {t:'ABBV', n:'AbbVie',             m:380,  p:213.60,c: 0.48, s:'Healthcare'},
+  {t:'BAC',  n:'Bank of America',    m:350,  p:43.20, c: 0.92, s:'Finance'},
+  {t:'NFLX', n:'Netflix',            m:310,  p:710.20,c: 1.85, s:'Technology'},
+  {t:'KO',   n:'Coca-Cola',          m:320,  p:62.40, c:-0.10, s:'Consumer'},
+  {t:'CVX',  n:'Chevron',            m:290,  p:155.80,c:-0.45, s:'Energy'},
+  {t:'AMD',  n:'AMD',                m:285,  p:175.40,c: 2.85, s:'Technology'},
+  {t:'CRM',  n:'Salesforce',         m:280,  p:285.60,c: 0.65, s:'Technology'},
+  {t:'TMO',  n:'Thermo Fisher',      m:275,  p:700.20,c:-0.32, s:'Healthcare'},
+  {t:'AXP',  n:'American Express',   m:200,  p:280.40,c: 0.75, s:'Finance'},
+  {t:'MCD',  n:"McDonald's",         m:220,  p:295.40,c: 0.22, s:'Consumer'},
+  {t:'CSCO', n:'Cisco',              m:215,  p:52.80, c:-0.18, s:'Technology'},
+  {t:'ACN',  n:'Accenture',          m:210,  p:330.40,c: 0.55, s:'Technology'},
+  {t:'ABT',  n:'Abbott Labs',        m:200,  p:112.60,c: 0.35, s:'Healthcare'},
+  {t:'CAT',  n:'Caterpillar',        m:195,  p:360.20,c:-0.75, s:'Industrial'},
+  {t:'GS',   n:'Goldman Sachs',      m:190,  p:520.80,c: 0.88, s:'Finance'},
+  {t:'TXN',  n:'Texas Instruments',  m:185,  p:200.40,c: 0.42, s:'Technology'},
+  {t:'NOW',  n:'ServiceNow',         m:180,  p:880.60,c: 1.25, s:'Technology'},
+  {t:'INTU', n:'Intuit',             m:175,  p:620.20,c:-0.45, s:'Technology'},
+  {t:'ISRG', n:'Intuitive Surgical', m:170,  p:480.40,c: 0.85, s:'Healthcare'},
+  {t:'AMAT', n:'Applied Materials',  m:160,  p:190.20,c: 1.95, s:'Technology'},
+  {t:'SPGI', n:'S&P Global',         m:155,  p:480.60,c: 0.35, s:'Finance'},
+  {t:'BKNG', n:'Booking Holdings',   m:150,  p:3850.2,c: 1.15, s:'Consumer'},
+  {t:'RTX',  n:'RTX Corp',           m:145,  p:105.40,c:-0.22, s:'Defense'},
+  {t:'LOW',  n:"Lowe's",             m:140,  p:225.80,c: 0.48, s:'Retail'},
+  {t:'AMGN', n:'Amgen',              m:135,  p:258.40,c:-0.85, s:'Healthcare'},
+  {t:'HON',  n:'Honeywell',          m:130,  p:204.60,c:-0.15, s:'Industrial'},
+  {t:'SYK',  n:'Stryker',            m:125,  p:320.40,c: 0.38, s:'Healthcare'},
+  {t:'DE',   n:'Deere & Co',         m:120,  p:385.60,c:-0.55, s:'Industrial'},
+  {t:'PLD',  n:'Prologis',           m:115,  p:115.40,c:-0.32, s:'Real Estate'},
+  {t:'PANW', n:'Palo Alto Networks', m:110,  p:290.20,c: 2.15, s:'Technology'},
+];
+
+const SCOL = {
+  Technology:'#0088ff', Finance:'#ffd700', Healthcare:'#ff4488',
+  Consumer:'#ff8c00',   Retail:'#00cc88',  Energy:'#ff7700',
+  Industrial:'#cccc00', Auto:'#cc0000',    Defense:'#8899cc',
+  'Real Estate':'#44bbaa',
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// BUILDING DIMENSION MATH
+// Volume-based approach: 1 unit³ = proportional market cap
+//
+// Height: log-scale (dramatic visual range 8→185 units)
+//   height = max(8, logRatio * 185)
+//   logRatio = log(mcap) / log(maxMcap)
+//
+// Base (width=depth): sqrt-scale (footprint ∝ √marketCap)
+//   base = max(5, √(mcap/maxMcap) * 22 + 4)
+//
+// Volume = base² × height  (proportional to mcap²·⁵, not linear)
+// For strictly linear volume: use cbrt for all dims.
+// ═══════════════════════════════════════════════════════════════════
+const sorted = [...COS].sort((a,b)=>b.m-a.m);
+const MAX_M  = sorted[0].m;
+
+function calcDims(mcap) {
+  const lr = Math.log(mcap) / Math.log(MAX_M);
+  const h  = Math.max(8,  lr * 185);
+  const b  = Math.max(5,  Math.sqrt(mcap / MAX_M) * 22 + 4);
+  return {h, b};
+}
+
+const allDims  = sorted.map(co => calcDims(co.m));
+const maxBase  = Math.max(...allDims.map(d => d.b));
+const ROAD     = 8;
+const CELL     = maxBase + ROAD;
+const COLS     = Math.ceil(Math.sqrt(sorted.length));
+const ROWS     = Math.ceil(sorted.length / COLS);
+const CITY_W   = COLS * CELL;
+const CITY_D   = ROWS * CELL;
+
+// ═══════════════════════════════════════════════════════════════════
+// THREE.JS SCENE
+// ═══════════════════════════════════════════════════════════════════
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const scene  = new THREE.Scene();
+scene.background = new THREE.Color(0x000814);
+scene.fog        = new THREE.FogExp2(0x000814, 0.0022);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.5, 2000);
+camera.position.set(0, 140, 235);
+
+// ─── INLINE ORBIT CONTROLS ─────────────────────────────────────────
+const OC = (function(){
+  const tgt  = new THREE.Vector3(0, 25, 0);
+  const sph  = new THREE.Spherical();
+  sph.setFromVector3(camera.position.clone().sub(tgt));
+  let dT=0,dP=0,dR=0, drag=false, px=0,py=0, enabled=true;
+  const el = renderer.domElement;
+
+  el.addEventListener('pointerdown', e=>{
+    if(!enabled)return; drag=true; px=e.clientX; py=e.clientY;
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', e=>{
+    if(!drag||!enabled)return;
+    dT -= (e.clientX-px)*0.007; dP -= (e.clientY-py)*0.007;
+    px=e.clientX; py=e.clientY;
+  });
+  el.addEventListener('pointerup', ()=>drag=false);
+  el.addEventListener('wheel', e=>{
+    if(!enabled)return; dR+=e.deltaY*0.1; e.preventDefault();
+  },{passive:false});
+
+  return {
+    target: tgt,
+    get enabled(){return enabled;}, set enabled(v){enabled=v;},
+    update(){
+      sph.theta += dT; dT *= .87;
+      sph.phi = Math.max(.04, Math.min(Math.PI/2-.02, sph.phi+dP)); dP *= .87;
+      sph.radius = Math.max(20, Math.min(900, sph.radius+dR)); dR *= .87;
+      camera.position.setFromSpherical(sph).add(tgt);
+      camera.lookAt(tgt);
+    },
+    sync(){ sph.setFromVector3(camera.position.clone().sub(tgt)); }
+  };
+})();
+
+// ─── LIGHTING ──────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x102040, 1.0));
+const moon = new THREE.DirectionalLight(0x4466aa, 0.4);
+moon.position.set(80, 200, 60);
+scene.add(moon);
+const glow = new THREE.PointLight(0x0033aa, 2.0, 500);
+glow.position.set(0, 8, 0);
+scene.add(glow);
+
+// ─── STARS ─────────────────────────────────────────────────────────
+(function(){
+  const N=5000, pos=new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    const t=Math.random()*Math.PI*2, p=Math.acos(2*Math.random()-1);
+    const r=900+Math.random()*100;
+    pos[i*3]=r*Math.sin(p)*Math.cos(t);
+    pos[i*3+1]=Math.abs(r*Math.cos(p));
+    pos[i*3+2]=r*Math.sin(p)*Math.sin(t);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const sizes=new Float32Array(N);
+  for(let i=0;i<N;i++) sizes[i]=Math.random()>0.95?2.5:1.2;
+  g.setAttribute('size',new THREE.BufferAttribute(sizes,1));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({color:0xffffff,size:1.4,sizeAttenuation:false})));
+})();
+
+// ─── MOON ──────────────────────────────────────────────────────────
+(function(){
+  const g=new THREE.SphereGeometry(18,16,16);
+  const m=new THREE.MeshBasicMaterial({color:0xddeeff});
+  const mesh=new THREE.Mesh(g,m); mesh.position.set(350,400,-500);
+  scene.add(mesh);
+  // Halo
+  const hg=new THREE.SphereGeometry(22,16,16);
+  const hm=new THREE.MeshBasicMaterial({color:0x334466,transparent:true,opacity:0.15});
+  scene.add(new THREE.Mesh(hg,hm));
+  hm.depthWrite=false;
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(22,16,16),hm));
+  // actual halo mesh at same position
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(24,16,16),
+    new THREE.MeshBasicMaterial({color:0x4488bb,transparent:true,opacity:0.08,depthWrite:false}));
+  halo.position.copy(mesh.position); scene.add(halo);
+  mesh.position.set(350,400,-500);
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// TEXTURE FACTORIES
+// ═══════════════════════════════════════════════════════════════════
+function mkWindowTex(bWidth, floors) {
+  const cols = Math.max(3, Math.min(22, Math.round(bWidth * 1.4)));
+  const rows = Math.max(3, Math.min(28, Math.round(floors * 0.22)));
+  const pw=11, ph=9;
+  const c=document.createElement('canvas');
+  c.width=cols*pw; c.height=rows*ph;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#04080f'; ctx.fillRect(0,0,c.width,c.height);
+  for(let r=0;r<rows;r++) for(let cc=0;cc<cols;cc++){
+    const lit=Math.random()>.3;
+    if(lit){
+      const x=Math.random();
+      ctx.fillStyle=x>.62?'#ffe080':x>.35?'#a8d8ff':'#ffcc66';
+    } else ctx.fillStyle='#070d1c';
+    ctx.fillRect(cc*pw+1, r*ph+1, pw-2, ph-2);
+  }
+  const tex=new THREE.CanvasTexture(c);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.repeat.set(1, Math.max(1, floors/rows));
+  return tex;
+}
+
+function mkNeonTex(label, color) {
+  const c=document.createElement('canvas'); c.width=512; c.height=72;
+  const ctx=c.getContext('2d');
+  const fs=Math.min(44,Math.max(16,Math.floor(470/Math.max(1,label.length))));
+  ctx.font=`900 ${fs}px 'Rajdhani',Arial,sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(let i=7;i>0;i--){ctx.shadowColor=color;ctx.shadowBlur=i*7;ctx.fillStyle=color;ctx.fillText(label,256,36);}
+  ctx.shadowBlur=2; ctx.fillStyle='#ffffff'; ctx.fillText(label,256,36);
+  return new THREE.CanvasTexture(c);
+}
+
+function mkTickerTex(ticker, price, chg) {
+  const c=document.createElement('canvas'); c.width=210; c.height=68;
+  const ctx=c.getContext('2d');
+  const clr=chg>=0?'#00ff88':'#ff4455';
+  ctx.fillStyle='rgba(1,4,16,0.9)'; ctx.fillRect(0,0,210,68);
+  ctx.strokeStyle=clr; ctx.lineWidth=1.5;
+  ctx.strokeRect(1,1,208,66);
+  ctx.font='bold 18px monospace'; ctx.fillStyle='#ddeeff';
+  ctx.textAlign='center'; ctx.fillText(ticker,105,21);
+  ctx.font='12px monospace'; ctx.fillStyle='#99aacc';
+  const pStr=price>=1000?`$${price.toFixed(0)}`:price>=100?`$${price.toFixed(2)}`:`$${price.toFixed(3)}`;
+  ctx.fillText(pStr,105,40);
+  ctx.font='bold 12px monospace'; ctx.fillStyle=clr;
+  ctx.fillText(`${chg>=0?'+':''}${chg.toFixed(2)}%`,105,58);
+  return new THREE.CanvasTexture(c);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GROUND + ROADS
+// ═══════════════════════════════════════════════════════════════════
+const groundMat = new THREE.MeshLambertMaterial({color:0x030810});
+const gMesh = new THREE.Mesh(new THREE.PlaneGeometry(CITY_W+ROAD*6, CITY_D+ROAD*6), groundMat);
+gMesh.rotation.x=-Math.PI/2; scene.add(gMesh);
+
+// Outer glow ring
+const ringGeo = new THREE.RingGeometry(Math.max(CITY_W,CITY_D)*0.72, Math.max(CITY_W,CITY_D)*0.78, 64);
+const ringMat = new THREE.MeshBasicMaterial({color:0x0033aa,transparent:true,opacity:0.15,side:THREE.DoubleSide,depthWrite:false});
+const ring = new THREE.Mesh(ringGeo, ringMat);
+ring.rotation.x=-Math.PI/2; ring.position.y=0.1; scene.add(ring);
+
+const roadMat=new THREE.MeshLambertMaterial({color:0x0a0f1e});
+function addPlane(x,z,w,d,y=0.05){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),roadMat);
+  m.rotation.x=-Math.PI/2; m.position.set(x,y,z); scene.add(m);
+}
+for(let r=0;r<=ROWS;r++) addPlane(0,-CITY_D/2+r*CELL-CELL/2, CITY_W+ROAD*2, ROAD);
+for(let c=0;c<=COLS;c++) addPlane(-CITY_W/2+c*CELL-CELL/2, 0, ROAD, CITY_D+ROAD*2);
+
+// Road dashes
+(function(){
+  const dashCanvas=document.createElement('canvas'); dashCanvas.width=6; dashCanvas.height=24;
+  const dctx=dashCanvas.getContext('2d');
+  dctx.fillStyle='#000'; dctx.fillRect(0,0,6,24);
+  dctx.fillStyle='#ffaa00'; dctx.fillRect(2,3,2,10);
+  const dTex=new THREE.CanvasTexture(dashCanvas);
+  dTex.wrapT=THREE.RepeatWrapping;
+  const dMat=new THREE.MeshBasicMaterial({map:dTex,transparent:true,opacity:0.35,depthWrite:false});
+  // Horizontal dash lines
+  for(let r=0;r<=ROWS;r++){
+    const z=-CITY_D/2+r*CELL-CELL/2;
+    dTex.repeat.set(1,CITY_W/16);
+    const dm=new THREE.Mesh(new THREE.PlaneGeometry(CITY_W+ROAD*2,1.2),dMat.clone());
+    dm.material.map=(() =>{const t=dTex.clone();t.wrapT=THREE.RepeatWrapping;t.repeat.set(1,(CITY_W+ROAD*2)/16);t.rotation=Math.PI/2;t.needsUpdate=true;return t;})();
+    dm.rotation.x=-Math.PI/2; dm.position.set(0,0.08,z); scene.add(dm);
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// BUILD CITY
+// ═══════════════════════════════════════════════════════════════════
+const buildings=[]; // {co, mesh, cx, cz, h, b}
+const meshArr=[];
+
+sorted.forEach((co,idx)=>{
+  const col=idx%COLS, row=Math.floor(idx/COLS);
+  const cx=-CITY_W/2+col*CELL+CELL/2;
+  const cz=-CITY_D/2+row*CELL+CELL/2;
+  const {h,b}=allDims[idx];
+  const sc=SCOL[co.s]||'#8899aa';
+  const scInt=parseInt(sc.replace('#',''),16);
+
+  // ── Window texture ──
+  const wTex=mkWindowTex(b,h);
+  const wMat=new THREE.MeshBasicMaterial({map:wTex});
+  const tMat=new THREE.MeshLambertMaterial({color:0x111824});
+  // BoxGeometry faces: +x,-x,+y,-y,+z,-z → right,left,top,bottom,front,back
+  const mats=[wMat,wMat,tMat,tMat,wMat,wMat];
+
+  const geo=new THREE.BoxGeometry(b,h,b);
+  const mesh=new THREE.Mesh(geo,mats);
+  mesh.position.set(cx,h/2,cz);
+  mesh.castShadow=true;
+  mesh.userData={co,idx};
+  scene.add(mesh);
+  meshArr.push(mesh);
+
+  // ── Roof cap ──
+  const roof=new THREE.Mesh(
+    new THREE.BoxGeometry(b*.82, Math.max(0.6,h*.025), b*.82),
+    new THREE.MeshLambertMaterial({color:0x162030})
+  );
+  roof.position.set(cx,h+Math.max(0.3,h*.012),cz);
+  scene.add(roof);
+
+  // Antenna (big buildings only)
+  if(h>60){
+    const ant=new THREE.Mesh(
+      new THREE.CylinderGeometry(.15,.15,h*.06,6),
+      new THREE.MeshBasicMaterial({color:0x334455})
+    );
+    ant.position.set(cx,h+h*.03+h*.03,cz);
+    scene.add(ant);
+    // Blinking red light
+    const blink=new THREE.Mesh(
+      new THREE.SphereGeometry(.5,8,8),
+      new THREE.MeshBasicMaterial({color:0xff2200})
+    );
+    blink.position.set(cx,h+h*.07,cz);
+    blink.userData.blinkTime=Math.random()*Math.PI*2; // phase offset
+    scene.add(blink);
+  }
+
+  // ── Neon sign (front + back) ──
+  const nLabel=co.n.length>11?co.t:co.n;
+  const nTex=mkNeonTex(nLabel,sc);
+  const nGeo=new THREE.PlaneGeometry(b*.88, Math.min(h*.07,3.5));
+  const nMat=new THREE.MeshBasicMaterial({
+    map:nTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide
+  });
+  const nH=h*.3;
+  const nf=new THREE.Mesh(nGeo,nMat);
+  nf.position.set(cx,nH,cz+b/2+.06); scene.add(nf);
+  const nb=new THREE.Mesh(nGeo,nMat.clone());
+  nb.rotation.y=Math.PI;
+  nb.position.set(cx,nH,cz-b/2-.06); scene.add(nb);
+
+  // Side signs (smaller)
+  const sGeo=new THREE.PlaneGeometry(b*.88, Math.min(h*.06,3));
+  const sf=new THREE.Mesh(sGeo,nMat.clone());
+  sf.rotation.y=Math.PI/2; sf.position.set(cx+b/2+.06,nH*.9,cz); scene.add(sf);
+  const sb=new THREE.Mesh(sGeo,nMat.clone());
+  sb.rotation.y=-Math.PI/2; sb.position.set(cx-b/2-.06,nH*.9,cz); scene.add(sb);
+
+  // ── Ticker sprite ──
+  const tTex=mkTickerTex(co.t,co.p,co.c);
+  const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tTex,depthTest:false}));
+  spr.scale.set(b*2.4,b*.85,1);
+  spr.position.set(cx,h+b*.7,cz);
+  scene.add(spr);
+
+  // ── Colored point light for big companies ──
+  if(co.m>350){
+    const pl=new THREE.PointLight(scInt,0.45,50);
+    pl.position.set(cx,h*.35,cz+b/2+3);
+    scene.add(pl);
+  }
+
+  buildings.push({co,mesh,cx,cz,h,b});
+});
+
+// Street lamps
+(function(){
+  const lampGeo=new THREE.CylinderGeometry(.12,.2,ROAD*.8,6);
+  const lampMat=new THREE.MeshLambertMaterial({color:0x334455});
+  const bulbMat=new THREE.MeshBasicMaterial({color:0xffffcc});
+  for(let r=0;r<=ROWS;r++) for(let c=0;c<=COLS;c++){
+    const x=-CITY_W/2+c*CELL-CELL/2;
+    const z=-CITY_D/2+r*CELL-CELL/2;
+    const post=new THREE.Mesh(lampGeo,lampMat);
+    post.position.set(x,ROAD*.4,z); scene.add(post);
+    const bulb=new THREE.Mesh(new THREE.SphereGeometry(.5,8,8),bulbMat);
+    bulb.position.set(x,ROAD*.82,z); scene.add(bulb);
+    const pl=new THREE.PointLight(0xffffaa,.25,ROAD*3);
+    pl.position.set(x,ROAD*.75,z); scene.add(pl);
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTOR LEGEND
+// ═══════════════════════════════════════════════════════════════════
+const legEl=document.getElementById('legend');
+const sectors=[...new Set(COS.map(c=>c.s))];
+legEl.innerHTML='<div style="font-size:9px;color:#224;letter-spacing:2px;margin-bottom:6px;">SECTOR</div>';
+sectors.forEach(s=>{
+  legEl.innerHTML+=`<div class="lg"><div class="lg-dot" style="background:${SCOL[s]||'#888'};box-shadow:0 0 6px ${SCOL[s]}88;"></div>${s}</div>`;
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// HUD STATS
+// ═══════════════════════════════════════════════════════════════════
+const total=COS.reduce((s,c)=>s+c.m,0);
+document.getElementById('sc').textContent=COS.length;
+document.getElementById('st').textContent='$'+(total/1000).toFixed(1)+'T';
+
+// ═══════════════════════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════════════════════
+const searchEl=document.getElementById('search');
+const dropEl=document.getElementById('drop');
+
+function renderDrop(q){
+  dropEl.innerHTML='';
+  if(!q){dropEl.style.display='none';return;}
+  const ql=q.toLowerCase();
+  const res=sorted.filter(co=>co.t.toLowerCase().includes(ql)||co.n.toLowerCase().includes(ql)).slice(0,9);
+  if(!res.length){dropEl.style.display='none';return;}
+  res.forEach(co=>{
+    const d=document.createElement('div'); d.className='di';
+    d.innerHTML=`<span class="di-t">${co.t}</span><span class="di-n">${co.n}</span><span class="di-c ${co.c>=0?'pos':'neg'}">${co.c>=0?'+':''}${co.c.toFixed(2)}%</span>`;
+    d.onclick=()=>{ flyTo(co.t); searchEl.value=co.t; dropEl.style.display='none'; };
+    dropEl.appendChild(d);
+  });
+  dropEl.style.display='block';
+}
+
+searchEl.addEventListener('input',()=>renderDrop(searchEl.value.trim()));
+searchEl.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    const q=searchEl.value.trim().toLowerCase();
+    const f=sorted.find(co=>co.t.toLowerCase()===q||co.t.toLowerCase().includes(q)||co.n.toLowerCase().includes(q));
+    if(f){flyTo(f.t);searchEl.value=f.t;dropEl.style.display='none';}
+  }
+  if(e.key==='Escape'){searchEl.blur();dropEl.style.display='none';}
+});
+document.addEventListener('click',e=>{if(!e.target.closest('#search-wrap'))dropEl.style.display='none';});
+
+// ═══════════════════════════════════════════════════════════════════
+// INFO CARD
+// ═══════════════════════════════════════════════════════════════════
+const infoEl=document.getElementById('info');
+function showInfo(co){
+  const rank=sorted.findIndex(c=>c.t===co.t)+1;
+  document.getElementById('ii-t').textContent=co.t;
+  document.getElementById('ii-n').textContent=co.n;
+  document.getElementById('ii-p').textContent=co.p>=100?`$${co.p.toFixed(2)}`:`$${co.p.toFixed(3)}`;
+  const cEl=document.getElementById('ii-c');
+  cEl.textContent=`${co.c>=0?'▲':'▼'} ${Math.abs(co.c).toFixed(2)}% Today`;
+  cEl.className=`ic ${co.c>=0?'pos':'neg'}`;
+  document.getElementById('ii-m').textContent=`Market Cap: $${co.m>=1000?(co.m/1000).toFixed(2)+'T':co.m+'B'}`;
+  document.getElementById('ii-r').textContent=`Rank #${rank} by Market Cap`;
+  const sEl=document.getElementById('ii-s');
+  sEl.textContent=co.s.toUpperCase();
+  sEl.style.cssText=`background:${SCOL[co.s]||'#888'}22;color:${SCOL[co.s]||'#888'};border:1px solid ${SCOL[co.s]||'#888'}55;display:inline-block;padding:3px 10px;border-radius:4px;font-size:10px;margin-top:10px;letter-spacing:2px;`;
+  infoEl.style.display='block';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FLY-TO ANIMATION
+// ═══════════════════════════════════════════════════════════════════
+let fly=null;
+function flyTo(ticker){
+  const bd=buildings.find(b=>b.co.t===ticker);
+  if(!bd)return;
+  fly={
+    fp:camera.position.clone(),
+    ft:OC.target.clone(),
+    tp:new THREE.Vector3(bd.cx+bd.b*2.5+12, bd.h*.55+8, bd.cz+bd.b*3+22),
+    tt:new THREE.Vector3(bd.cx, bd.h*.5, bd.cz),
+    t:0
+  };
+  OC.enabled=false;
+  showInfo(bd.co);
+}
+
+function eIO(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+
+// ═══════════════════════════════════════════════════════════════════
+// CLICK SELECTION
+// ═══════════════════════════════════════════════════════════════════
+const ray=new THREE.Raycaster();
+const mxy=new THREE.Vector2();
+let clickTs=0;
+
+renderer.domElement.addEventListener('click',e=>{
+  if(Date.now()-clickTs<200)return; // debounce vs drag
+  mxy.set((e.clientX/window.innerWidth)*2-1,-(e.clientY/window.innerHeight)*2+1);
+  ray.setFromCamera(mxy,camera);
+  const hits=ray.intersectObjects(meshArr);
+  if(hits.length){
+    const {co}=hits[0].object.userData;
+    if(co){ flyTo(co.t); }
+  } else {
+    infoEl.style.display='none';
+  }
+});
+renderer.domElement.addEventListener('pointerdown',()=>clickTs=Date.now());
+
+// ═══════════════════════════════════════════════════════════════════
+// KEYBOARD NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+const keys={};
+document.addEventListener('keydown',e=>{
+  if(e.target===searchEl)return;
+  keys[e.code]=true;
+  if(e.code==='Escape'){
+    fly={
+      fp:camera.position.clone(), ft:OC.target.clone(),
+      tp:new THREE.Vector3(0,140,235), tt:new THREE.Vector3(0,25,0), t:0
+    };
+    OC.enabled=false;
+    infoEl.style.display='none'; searchEl.value='';
+  }
+});
+document.addEventListener('keyup',e=>delete keys[e.code]);
+
+function handleKb(dt){
+  if(!OC.enabled)return;
+  const spd=55*dt;
+  const dir=new THREE.Vector3(); camera.getWorldDirection(dir); dir.y=0; dir.normalize();
+  const rgt=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0));
+  let moved=false;
+  const mv=new THREE.Vector3();
+  if(keys['KeyW']||keys['ArrowUp'])   {mv.addScaledVector(dir, spd);moved=true;}
+  if(keys['KeyS']||keys['ArrowDown']) {mv.addScaledVector(dir,-spd);moved=true;}
+  if(keys['KeyA']||keys['ArrowLeft']) {mv.addScaledVector(rgt,-spd);moved=true;}
+  if(keys['KeyD']||keys['ArrowRight']){mv.addScaledVector(rgt, spd);moved=true;}
+  if(keys['KeyQ']){mv.y+=spd;moved=true;}
+  if(keys['KeyE']){mv.y-=spd;moved=true;}
+  if(moved){
+    camera.position.add(mv);
+    OC.target.add(mv);
+    OC.sync();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ANIMATE BLINKING LIGHTS
+// ═══════════════════════════════════════════════════════════════════
+const blinkMeshes=[];
+scene.traverse(obj=>{
+  if(obj.isMesh && obj.userData.blinkTime!==undefined) blinkMeshes.push(obj);
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// MAIN LOOP
+// ═══════════════════════════════════════════════════════════════════
+let last=0;
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt=Math.min((now-last)/1000,.05); last=now;
+
+  // Fly-to
+  if(fly){
+    fly.t=Math.min(1,fly.t+dt*.85);
+    const et=eIO(fly.t);
+    camera.position.lerpVectors(fly.fp,fly.tp,et);
+    OC.target.lerpVectors(fly.ft,fly.tt,et);
+    camera.lookAt(OC.target);
+    if(fly.t>=1){ fly=null; OC.sync(); OC.enabled=true; }
+  } else {
+    handleKb(dt);
+    OC.update();
+  }
+
+  // City glow pulse
+  glow.intensity=1.8+Math.sin(now*.0007)*.5;
+  ring.material.opacity=0.12+Math.sin(now*.0005)*.05;
+
+  // Blink antennas
+  blinkMeshes.forEach(m=>{
+    const on=Math.sin(now*.003+m.userData.blinkTime)>0.7;
+    m.material.color.setHex(on?0xff3300:0x330000);
+  });
+
+  renderer.render(scene,camera);
+}
+animate(0);
+
+// ═══════════════════════════════════════════════════════════════════
+// RESIZE
+// ═══════════════════════════════════════════════════════════════════
+window.addEventListener('resize',()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// HIDE LOADING
+// ═══════════════════════════════════════════════════════════════════
+setTimeout(()=>{
+  const lo=document.getElementById('loading');
+  lo.style.opacity='0';
+  setTimeout(()=>lo.remove(),900);
+},400);
+</script>
+</body>
+</html>
