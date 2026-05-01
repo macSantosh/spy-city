@@ -113,6 +113,87 @@ export function InfoPanel() {
     return theme.accent.red;
   };
 
+  // Helper to render gradient bar for scores
+  const ScoreBar = ({ score, isLarge = false }: { score: number; isLarge?: boolean }) => {
+    // Normalize score to 0-100 range
+    const normalizedScore = Math.max(0, Math.min(100, score));
+    
+    // Calculate gradient color based on score (0 = red, 100 = green)
+    const getGradientColor = (value: number) => {
+      // Red to Orange to Yellow to Green gradient
+      if (value <= 25) {
+        // Red to Orange
+        const t = value / 25;
+        return `rgb(${255}, ${Math.floor(69 + (165 - 69) * t)}, ${Math.floor(0 + (0 - 0) * t)})`;
+      } else if (value <= 50) {
+        // Orange to Yellow
+        const t = (value - 25) / 25;
+        return `rgb(${255}, ${Math.floor(165 + (204 - 165) * t)}, ${Math.floor(0 + (0 - 0) * t)})`;
+      } else if (value <= 75) {
+        // Yellow to Yellow-Green
+        const t = (value - 50) / 25;
+        return `rgb(${Math.floor(255 - (255 - 173) * t)}, ${Math.floor(204 + (255 - 204) * t)}, ${Math.floor(0 + (47 - 0) * t)})`;
+      } else {
+        // Yellow-Green to Green
+        const t = (value - 75) / 25;
+        return `rgb(${Math.floor(173 - (173 - 34) * t)}, ${255}, ${Math.floor(47 + (139 - 47) * t)})`;
+      }
+    };
+
+    const fillColor = getGradientColor(normalizedScore);
+    
+    return (
+      <div 
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: isLarge ? '24px' : '14px',
+          background: 'rgba(0, 0, 0, 0.4)',
+          borderRadius: '4px',
+          overflow: 'hidden',
+          border: '1px solid rgba(127, 219, 202, 0.15)',
+        }}
+      >
+        {/* Gradient fill */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            height: '100%',
+            width: `${normalizedScore}%`,
+            background: `linear-gradient(to right, 
+              rgb(255, 69, 0) 0%, 
+              rgb(255, 165, 0) 25%, 
+              rgb(255, 204, 0) 50%, 
+              rgb(173, 255, 47) 75%, 
+              rgb(34, 255, 139) 100%
+            )`,
+            backgroundSize: `${100 / (normalizedScore / 100)}% 100%`,
+            backgroundPosition: 'left center',
+            transition: 'width 0.3s ease',
+          }}
+        />
+        {/* Score number */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontSize: isLarge ? '12px' : '9px',
+            fontWeight: 700,
+            color: '#ffffff',
+            textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
+            zIndex: 1,
+          }}
+        >
+          {score}
+        </div>
+      </div>
+    );
+  };
+
   // Merge expanded metrics into company for display
   const displayCompany = expandedMetrics ? { ...company, ...expandedMetrics } : company;
 
@@ -164,36 +245,25 @@ export function InfoPanel() {
           {valueScore && (
             <div className="info-section">
               <div className="info-section-title">Value Score</div>
-              <div className="info-score-display">
-                <span className="info-score-number" style={{ color: getScoreColor(valueScore.overall) }}>
-                  {valueScore.overall}
-                </span>
-                <span className="info-score-label">/100</span>
+              <div style={{ margin: '8px 0 10px' }}>
+                <ScoreBar score={valueScore.overall} isLarge={true} />
               </div>
               <div className="info-score-grid">
-                <div className="info-score-item">
+                <div className="info-score-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
                   <span className="info-score-cat">Profitability</span>
-                  <span className="info-score-val" style={{ color: getScoreColor(valueScore.categories.profitability) }}>
-                    {valueScore.categories.profitability}
-                  </span>
+                  <ScoreBar score={valueScore.categories.profitability} />
                 </div>
-                <div className="info-score-item">
+                <div className="info-score-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
                   <span className="info-score-cat">Value</span>
-                  <span className="info-score-val" style={{ color: getScoreColor(valueScore.categories.value) }}>
-                    {valueScore.categories.value}
-                  </span>
+                  <ScoreBar score={valueScore.categories.value} />
                 </div>
-                <div className="info-score-item">
+                <div className="info-score-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
                   <span className="info-score-cat">Health</span>
-                  <span className="info-score-val" style={{ color: getScoreColor(valueScore.categories.health) }}>
-                    {valueScore.categories.health}
-                  </span>
+                  <ScoreBar score={valueScore.categories.health} />
                 </div>
-                <div className="info-score-item">
+                <div className="info-score-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
                   <span className="info-score-cat">Growth</span>
-                  <span className="info-score-val" style={{ color: getScoreColor(valueScore.categories.growth) }}>
-                    {valueScore.categories.growth}
-                  </span>
+                  <ScoreBar score={valueScore.categories.growth} />
                 </div>
               </div>
               {valueScore.dataCompleteness < 80 && (
