@@ -71,7 +71,7 @@ export function Ground() {
     <group>
       {/* Base Ground Plane (Dark Blocks) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[width + 100, depth + 100]} />
+        <planeGeometry args={[4000, 4000]} />
         <meshLambertMaterial color={theme.scene.ground} />
       </mesh>
 
@@ -85,24 +85,24 @@ export function Ground() {
       {vRoads.map((road, i) => (
         <group key={`vr-${i}`} position={[road.x, 0, 0]}>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y_ROAD, 0]}>
-            <planeGeometry args={[road.width, depth + 100]} />
+            <planeGeometry args={[road.width, 4000]} />
             <meshLambertMaterial color={road.isBlvd ? theme.scene.blvd : theme.scene.road} />
           </mesh>
 
           {/* Dividing lines */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y_DIVIDER, 0]}>
-            <planeGeometry args={[road.isBlvd ? 0.6 : 0.4, depth + 100]} />
+            <planeGeometry args={[road.isBlvd ? 0.6 : 0.4, 4000]} />
             <meshBasicMaterial color={theme.scene.line} transparent={!road.isBlvd} opacity={road.isBlvd ? 1 : 0.6} />
           </mesh>
 
           {road.isBlvd && (
             <>
               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-8, Y_DIVIDER, 0]}>
-                 <planeGeometry args={[0.4, depth + 100]} />
+                 <planeGeometry args={[0.4, 4000]} />
                  <meshBasicMaterial color={theme.scene.lineWhite} transparent opacity={0.5} />
               </mesh>
               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[8, Y_DIVIDER, 0]}>
-                 <planeGeometry args={[0.4, depth + 100]} />
+                 <planeGeometry args={[0.4, 4000]} />
                  <meshBasicMaterial color={theme.scene.lineWhite} transparent opacity={0.5} />
               </mesh>
             </>
@@ -110,11 +110,11 @@ export function Ground() {
 
           {/* Raised Sidewalk Cuffs */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-road.width/2 - 1, Y_SIDEWALK, 0]}>
-             <planeGeometry args={[2, depth + 100]} />
+             <planeGeometry args={[2, 4000]} />
              <meshLambertMaterial color={theme.scene.sidewalk} />
           </mesh>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[road.width/2 + 1, Y_SIDEWALK, 0]}>
-             <planeGeometry args={[2, depth + 100]} />
+             <planeGeometry args={[2, 4000]} />
              <meshLambertMaterial color={theme.scene.sidewalk} />
           </mesh>
         </group>
@@ -124,24 +124,24 @@ export function Ground() {
       {hRoads.map((road, i) => (
         <group key={`hr-${i}`} position={[0, 0, road.z]}>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y_ROAD, 0]}>
-            <planeGeometry args={[width + 100, road.width]} />
+            <planeGeometry args={[4000, road.width]} />
             <meshLambertMaterial color={road.isBlvd ? theme.scene.blvd : theme.scene.road} depthWrite={false} />
           </mesh>
 
           {/* Dividing lines */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y_DIVIDER, 0]}>
-            <planeGeometry args={[width + 100, road.isBlvd ? 0.6 : 0.4]} />
+            <planeGeometry args={[4000, road.isBlvd ? 0.6 : 0.4]} />
             <meshBasicMaterial color={theme.scene.line} transparent={!road.isBlvd} opacity={road.isBlvd ? 1 : 0.6} />
           </mesh>
 
           {road.isBlvd && (
             <>
               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y_DIVIDER, -8]}>
-                 <planeGeometry args={[width + 100, 0.4]} />
+                 <planeGeometry args={[4000, 0.4]} />
                  <meshBasicMaterial color={theme.scene.lineWhite} transparent opacity={0.5} />
               </mesh>
               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y_DIVIDER, 8]}>
-                 <planeGeometry args={[width + 100, 0.4]} />
+                 <planeGeometry args={[4000, 0.4]} />
                  <meshBasicMaterial color={theme.scene.lineWhite} transparent opacity={0.5} />
               </mesh>
             </>
@@ -149,11 +149,11 @@ export function Ground() {
 
           {/* Raised Sidewalk Cuffs */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y_SIDEWALK, -road.width/2 - 1]}>
-             <planeGeometry args={[width + 100, 2]} />
+             <planeGeometry args={[4000, 2]} />
              <meshLambertMaterial color={theme.scene.sidewalk} />
           </mesh>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y_SIDEWALK, road.width/2 + 1]}>
-             <planeGeometry args={[width + 100, 2]} />
+             <planeGeometry args={[4000, 2]} />
              <meshLambertMaterial color={theme.scene.sidewalk} />
           </mesh>
         </group>

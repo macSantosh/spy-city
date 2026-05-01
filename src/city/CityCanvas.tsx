@@ -13,7 +13,7 @@ export function CityCanvas() {
       shadows
       style={{ position: 'fixed', inset: 0 }}
     >
-      <fog attach="fog" args={[theme.scene.fog, 200, 900]} />
+      <fog attach="fog" args={[theme.scene.fog, 200, 750]} />
       <CityScene />
     </Canvas>
   );

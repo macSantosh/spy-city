@@ -9,9 +9,12 @@ import { useCityStore } from '@/store/cityStore';
 
 export function CameraController() {
   const controlsRef = useRef<CameraControlsImpl>(null);
+  const tmpTargetRef = useRef(new THREE.Vector3());
   const flyTarget = useCityStore((s) => s.flyTarget);
   const selectedTicker = useCityStore((s) => s.selectedTicker);
   const setSelected = useCityStore((s) => s.setSelected);
+  const minCameraY = 1.0;
+  const minTargetY = 0.0;
 
   // Default setup jump
   useEffect(() => {
@@ -52,7 +55,7 @@ export function CameraController() {
     const posVec = new THREE.Vector3(px, py, pz);
     
     const dir = new THREE.Vector3().subVectors(posVec, targetVec).normalize();
-    const desiredDistance = Math.max(45, source === 'search' ? h * 3.5 : h * 2.8);
+    const desiredDistance = Math.max(45, source === 'search' ? h * 2.0 : h * 2.8);
     
     const finalPos = targetVec.clone().add(dir.multiplyScalar(desiredDistance));
 
@@ -65,14 +68,36 @@ export function CameraController() {
 
   // Cinematic slow rotation while building is selected
   useFrame((_, delta) => {
-    if (controlsRef.current && selectedTicker) {
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    if (selectedTicker) {
       // Only auto-rotate if the camera is completely dormant (transition finished, user not dragging)
-      const isResting = controlsRef.current.currentAction === CameraControlsImpl.ACTION.NONE;
+      const isResting = controls.currentAction === CameraControlsImpl.ACTION.NONE;
       if (isResting) {
         // Rotate the azimuth slowly. 0.05 rad/sec = ~2 minutes for a full 360 degree orbit.
         // This gives that cinematic "moving camera angle slowly" feel without inducing motion sickness.
-        controlsRef.current.rotate(delta * 0.05, 0, false);
+        controls.rotate(delta * 0.05, 0, false);
       }
+    }
+
+    // Hard floor guard: prevent any camera/target state from slipping below ground.
+    const camPos = controls.camera.position;
+    controls.getTarget(tmpTargetRef.current);
+
+    const nextTargetY = Math.max(tmpTargetRef.current.y, minTargetY);
+    const nextCameraY = Math.max(camPos.y, nextTargetY + minCameraY);
+
+    if (nextTargetY !== tmpTargetRef.current.y || nextCameraY !== camPos.y) {
+      controls.setLookAt(
+        camPos.x,
+        nextCameraY,
+        camPos.z,
+        tmpTargetRef.current.x,
+        nextTargetY,
+        tmpTargetRef.current.z,
+        false
+      );
     }
   });
 
@@ -100,7 +125,7 @@ export function CameraController() {
       ref={controlsRef}
       makeDefault
       minDistance={25}
-      maxDistance={700}
+      maxDistance={480}
       minPolarAngle={0.05} // Ban completely vertical upside-down zenith
       maxPolarAngle={selectedTicker ? relaxedMaxPolar : baseMaxPolar} // Ban underground views dynamically
       smoothTime={0.15} // Enforce natural mouse inertia 
