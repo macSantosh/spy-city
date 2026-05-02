@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import type { Company } from '@/data/types';
 import { useCityStore } from '@/store/cityStore';
-import { calcSectorMedians } from '@/util/sectorMedians';
+import { calcSectorMedians } from '@/utils/calculations';
 import { SECTOR_COLORS } from '@/data/sectors';
 import { theme } from '@/data/theme';
 

@@ -50,37 +50,24 @@ export function calcSectorMedians(companies: Company[]): SectorMedians {
     sectorGroups[company.sector].push(company);
   });
   
-  // Calculate median for each metric per sector
-  const medians: SectorMedians = {};
+  // Calculate medians for each sector
+  const result: SectorMedians = {};
   
-  Object.keys(sectorGroups).forEach((sector) => {
-    const companiesInSector = sectorGroups[sector];
-    
-    medians[sector] = {
-      volume10Day: median(companiesInSector.map((c) => c.volume10Day)),
-      peRatio: median(companiesInSector.map((c) => c.peRatio)),
-      eps: median(companiesInSector.map((c) => c.eps)),
-      dividendYield: median(companiesInSector.map((c) => c.dividendYield)),
-      roe: median(companiesInSector.map((c) => c.roe)),
-      roa: median(companiesInSector.map((c) => c.roa)),
-      profitMargin: median(companiesInSector.map((c) => c.profitMargin)),
-      revenuePerShare: median(companiesInSector.map((c) => c.revenuePerShare)),
-      bookValue: median(companiesInSector.map((c) => c.bookValue)),
-      currentRatio: median(companiesInSector.map((c) => c.currentRatio)),
-      debtToEquity: median(companiesInSector.map((c) => c.debtToEquity)),
+  Object.entries(sectorGroups).forEach(([sector, sectorCompanies]) => {
+    result[sector] = {
+      volume10Day: median(sectorCompanies.map((c) => c.volume10Day)),
+      peRatio: median(sectorCompanies.map((c) => c.peRatio)),
+      eps: median(sectorCompanies.map((c) => c.eps)),
+      dividendYield: median(sectorCompanies.map((c) => c.dividendYield)),
+      roe: median(sectorCompanies.map((c) => c.roe)),
+      roa: median(sectorCompanies.map((c) => c.roa)),
+      profitMargin: median(sectorCompanies.map((c) => c.profitMargin)),
+      revenuePerShare: median(sectorCompanies.map((c) => c.revenuePerShare)),
+      bookValue: median(sectorCompanies.map((c) => c.bookValue)),
+      currentRatio: median(sectorCompanies.map((c) => c.currentRatio)),
+      debtToEquity: median(sectorCompanies.map((c) => c.debtToEquity)),
     };
   });
   
-  return medians;
-}
-
-/**
- * Get a specific metric's sector median value
- */
-export function getSectorMedian(
-  sectorMedians: SectorMedians,
-  sector: string,
-  metric: keyof SectorMedians[string]
-): number | undefined {
-  return sectorMedians[sector]?.[metric];
+  return result;
 }

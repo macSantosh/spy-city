@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Company } from '@/data/types';
-import { calculateAllValueScores, type ValueScore } from '@/util/valueScore';
+import { calculateAllValueScores, type ValueScore } from '@/utils/calculations';
 
 export type CityMode = 'normal' | 'heatmap' | 'crash';
 

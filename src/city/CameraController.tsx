@@ -48,14 +48,14 @@ export function CameraController() {
     const radius = h * 0.9;
     const px = cx + Math.cos(targetAngle) * radius;
     const pz = cz + Math.sin(targetAngle) * radius;
-    const py = h * 1.25 + 15; // guaranteed to be slightly above the building roof
+    const py = h * 1.1 + 15; // guaranteed to be slightly above the building roof
 
     // Vector extraction to enforce explicit distance limits relative to building size
     const targetVec = new THREE.Vector3(tx, ty, tz);
     const posVec = new THREE.Vector3(px, py, pz);
     
     const dir = new THREE.Vector3().subVectors(posVec, targetVec).normalize();
-    const desiredDistance = Math.max(45, source === 'search' ? h * 2.0 : h * 2.8);
+    const desiredDistance = Math.max(45, source === 'search' ? h * 2.0 : h * 2.3);
     
     const finalPos = targetVec.clone().add(dir.multiplyScalar(desiredDistance));
 

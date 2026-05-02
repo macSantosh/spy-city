@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
+import { env } from '@/config/env';
+import { EXTERNAL_API } from '@/config/api.config';
+import { CACHE_CONFIG } from '@/config/cache.config';
+import { logger } from '@/utils/logger';
 
-const FINNHUB_BASE = 'https://finnhub.io/api/v1';
+const FINNHUB_BASE = EXTERNAL_API.finnhub;
 
 async function fetchTickerData(key: string, symbol: string) {
   return unstable_cache(
     async () => {
+      logger.debug(`Fetching ticker data for ${symbol}`);
+      
       const [quoteRes, metricRes] = await Promise.all([
         fetch(`${FINNHUB_BASE}/quote?symbol=${symbol}&token=${key}`),
         fetch(`${FINNHUB_BASE}/stock/metric?symbol=${symbol}&metric=all&token=${key}`)
@@ -33,27 +39,35 @@ async function fetchTickerData(key: string, symbol: string) {
       return { symbol, quote, metric, extendedMetrics };
     },
     [`finnhub-ticker-${symbol}`],
-    { revalidate: 86400 } // Cache for 24h
+    { revalidate: CACHE_CONFIG.revalidate.quote }
   )();
 }
 
 async function fetchProfile(key: string, symbol: string) {
   return unstable_cache(
     async () => {
+      logger.debug(`Fetching profile for ${symbol}`);
       const res = await fetch(`${FINNHUB_BASE}/stock/profile2?symbol=${symbol}&token=${key}`);
       return res.ok ? await res.json() : null;
     },
     [`finnhub-profile-${symbol}`],
-    { revalidate: 86400 * 7 } // Cache for 7 days
+    { revalidate: CACHE_CONFIG.revalidate.profile }
   )();
 }
 
 export async function GET(request: NextRequest) {
-  const KEY = process.env.FINNHUB_API_KEY;
+  // Validate API key at runtime
+  const KEY = env.FINNHUB_API_KEY;
+  
   if (!KEY || KEY === 'your_key_here') {
+    logger.error('FINNHUB_API_KEY not configured');
     return NextResponse.json(
-      { error: 'FINNHUB_API_KEY not configured. Add it to .env.local' },
-      { status: 503 },
+      { 
+        error: 'API key not configured',
+        message: 'FINNHUB_API_KEY is missing. Add it to .env.local',
+        docs: 'https://finnhub.io/register'
+      },
+      { status: 503 }
     );
   }
 
@@ -75,12 +89,14 @@ export async function GET(request: NextRequest) {
     }
 
     const symbols = symbolsParam.split(',').map(s => s.trim()).filter(Boolean);
-    console.log(`[Server /api/quotes] Starting batch fetch for ${symbols.length} tickers...`);
+    logger.info(`Starting batch fetch for ${symbols.length} tickers`);
+    
     const results = await Promise.all(symbols.map(sym => fetchTickerData(KEY, sym)));
-    console.log(`[Server /api/quotes] Finnhub batch complete for ${symbols.length} tickers.`);
+    
+    logger.info(`Finnhub batch complete for ${symbols.length} tickers`);
     return NextResponse.json(results);
   } catch (err) {
-    console.error('[Server /api/quotes] Finnhub error', err);
+    logger.error('Finnhub API error', err);
     return NextResponse.json({ error: 'Upstream Finnhub API error' }, { status: 502 });
   }
 }

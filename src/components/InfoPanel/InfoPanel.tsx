@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useCityStore } from '@/store/cityStore';
 import { SECTOR_COLORS } from '@/data/sectors';
 import { theme } from '@/data/theme';
-import { calcSectorMedians } from '@/util/sectorMedians';
-import { fetchWithRetry } from '@/util/fetchWithRetry';
+import { calcSectorMedians } from '@/utils/calculations';
+import { finnhubService } from '@/services';
 
 export function InfoPanel() {
   const company = useCityStore((s) => s.selectedCompany);
@@ -33,12 +33,9 @@ export function InfoPanel() {
 
     async function fetchExtended() {
       try {
-        const res = await fetchWithRetry(`/api/quotes?symbols=${company?.ticker}`);
-        if (!res.ok) throw new Error('Fetch Error');
-        const rawData = await res.json();
+        if (!company) return;
         
-        // API returns array, take first element
-        const data = Array.isArray(rawData) ? rawData[0] : rawData;
+        const data = await finnhubService.fetchMetrics(company.ticker);
         
         if (active && data) {
           const met = data.metric?.metric;
