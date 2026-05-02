@@ -6,10 +6,12 @@ import { FALLBACK_COMPANIES } from '@/data/companies';
 import { normalizeSector } from '@/data/sectors';
 import constituentsData from '@/data/constituents.json';
 import type { Company } from '@/data/types';
-import { fetchWithRetry } from '@/util/fetchWithRetry';
+import { finnhubService } from '@/services';
+import { CACHE_CONFIG, buildCacheKey, isCacheValid } from '@/config/cache.config';
+import { API_CONFIG } from '@/config/api.config';
+import { logger } from '@/utils/logger';
 
-const CACHE_KEY = 'spycity_v6'; // v6: Bust cache after fixing 503 API error
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_KEY = buildCacheKey('companies');
 
 export function useCompanyData() {
   const setCompanies = useCityStore((s) => s.setCompanies);
@@ -29,8 +31,8 @@ export function useCompanyData() {
       const raw = localStorage.getItem(CACHE_KEY);
       if (raw) {
         const cached = JSON.parse(raw) as { ts: number; data: Company[] };
-        if (Date.now() - cached.ts < CACHE_TTL && cached.data.length > 0) {
-          console.log(`[useCompanyData] Valid cache found for ${cached.data.length} companies. Skipping network fetch.`);
+        if (isCacheValid(cached.ts, CACHE_CONFIG.ttl.companies) && cached.data.length > 0) {
+          logger.info(`Valid cache found for ${cached.data.length} companies. Skipping network fetch.`);
           cachedData = cached.data;
           setCompanies(cachedData);
           setLoading(false);
@@ -44,14 +46,14 @@ export function useCompanyData() {
 
     // Layer 3: Serve fallback immediately so city is never blank
     if (!cachedData) {
-      console.log('[useCompanyData] No valid cache. Seeding with FALLBACK_COMPANIES (50 companies).');
+      logger.info('No valid cache. Seeding with FALLBACK_COMPANIES (50 companies).');
       setCompanies(FALLBACK_COMPANIES);
     }
 
     // Layer 1: Server Fetches
     async function fetchLive() {
       try {
-        console.log(`[useCompanyData] Loaded ${constituentsData.length} constituents directly from JSON.`);
+        logger.info(`Loaded ${constituentsData.length} constituents directly from JSON.`);
 
         // Seed current companies with JSON data + fallback data for sizing mid-load
         let currentCompanies: Company[] = (constituentsData as any[]).map((co) => {
@@ -65,63 +67,59 @@ export function useCompanyData() {
             change: fallback?.change || 0,
           };
         });
-        
         // Render the true 500 buildings sized initially to 10 (except fallbacks)
         setCompanies(currentCompanies);
 
         // Fetch quotes 1-by-1 to stay beneath Finnhub's strict 60/min free limit
         const tickers = currentCompanies.map((c) => c.ticker);
-        console.log(`[useCompanyData] Began progressive Finnhub quote fetching for ${tickers.length} tickers at 1 call per 1100ms...`);
+        logger.info(`Began progressive Finnhub quote fetching for ${tickers.length} tickers at 1 call per ${API_CONFIG.rateLimit.delayBetweenRequests}ms...`);
 
         for (let i = 0; i < tickers.length; i++) {
-          const chunk = tickers[i];
+          const ticker = tickers[i];
           try {
-            const batchRes = await fetchWithRetry(`/api/quotes?symbols=${chunk}`);
-            if (batchRes.ok) {
-              const batchData = await batchRes.json();
-              
-              currentCompanies = [...currentCompanies]; // copy reference
-              
-              batchData.forEach((res: any) => {
-                const idx = currentCompanies.findIndex((c) => c.ticker === res.symbol);
-                if (idx !== -1 && res.quote) {
-                  const price = res.quote.c || 0;
-                  
-                  // Merge quote data + extended financial metrics for value score calculation
-                  currentCompanies[idx] = {
-                    ...currentCompanies[idx],
-                    // Merge extended metrics first (includes marketCapFromAPI)
-                    ...(res.extendedMetrics || {}),
-                    // Then override with quote data
-                    price: price,
-                    change: res.quote.dp || 0,
-                    // Use API market cap if available, otherwise keep existing
-                    marketCap: res.extendedMetrics?.marketCapFromAPI || currentCompanies[idx].marketCap,
-                  };
-                }
-              });
-
-              // Visually update the city with true values occasionally to batch renders
-              if (i % 5 === 0 || i === tickers.length - 1) {
-                setCompanies(currentCompanies);
-                localStorage.setItem(
-                  CACHE_KEY,
-                  JSON.stringify({ ts: Date.now(), data: currentCompanies })
-                );
+            const [batchData] = await finnhubService.fetchQuotes([ticker]);
+            
+            currentCompanies = [...currentCompanies]; // copy reference
+            
+            if (batchData && batchData.quote) {
+              const idx = currentCompanies.findIndex((c) => c.ticker === batchData.symbol);
+              if (idx !== -1) {
+                const price = batchData.quote.c || 0;
+                
+                // Merge quote data + extended financial metrics for value score calculation
+                currentCompanies[idx] = {
+                  ...currentCompanies[idx],
+                  // Merge extended metrics first (includes marketCapFromAPI)
+                  ...(batchData.extendedMetrics || {}),
+                  // Then override with quote data
+                  price: price,
+                  change: batchData.quote.dp || 0,
+                  // Use API market cap if available, otherwise keep existing
+                  marketCap: batchData.extendedMetrics?.marketCapFromAPI || currentCompanies[idx].marketCap,
+                };
               }
             }
+
+            // Visually update the city with true values occasionally to batch renders
+            if (i % 5 === 0 || i === tickers.length - 1) {
+              setCompanies(currentCompanies);
+              localStorage.setItem(
+                CACHE_KEY,
+                JSON.stringify({ ts: Date.now(), data: currentCompanies })
+              );
+            }
           } catch (e) {
-            console.warn(`Ticker ${chunk} quote fetch failed`, e);
+            logger.warn(`Ticker ${ticker} quote fetch failed`, { data: e });
           }
 
-          // Strict Finnhub 60/min free tier rate limit: wait 1100ms between calls
+          // Strict Finnhub 60/min free tier rate limit
           if (i < tickers.length - 1) {
-            await new Promise((r) => setTimeout(r, 1100));
+            await new Promise((r) => setTimeout(r, API_CONFIG.rateLimit.delayBetweenRequests));
           }
         }
-        console.log('[useCompanyData] All quotes fully downloaded and cached.');
+        logger.info('All quotes fully downloaded and cached.');
       } catch (err) {
-        console.warn('Live fetch failed entirely, keeping fallback state', err);
+        logger.warn('Live fetch failed entirely, keeping fallback state', { data: err });
       } finally {
         setLoading(false);
       }

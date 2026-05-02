@@ -1,5 +1,5 @@
 export const SECTOR_COLORS: Record<string, string> = {
-  Technology:    '#0088ff',
+  Technology:    '#22ff66',  // Bright lime green - stands out in night theme
   Finance:       '#ffd700',
   Healthcare:    '#ff4488',
   Consumer:      '#ff8c00',
@@ -7,10 +7,10 @@ export const SECTOR_COLORS: Record<string, string> = {
   Energy:        '#ff7700',
   Industrial:    '#cccc00',
   Auto:          '#cc0000',
-  Defense:       '#8899cc',
+  Defense:       '#ff9944',  // Warm orange - better contrast than blue-gray
   'Real Estate': '#44bbaa',
   Utilities:     '#aa88ff',
-  Materials:     '#88bbdd',
+  Materials:     '#dd9955',  // Bronze/copper - better contrast than light blue
 };
 
 // Ordered list of sectors for the legend UI
