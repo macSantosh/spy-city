@@ -14,13 +14,14 @@ export function CameraController() {
   const selectedTicker = useCityStore((s) => s.selectedTicker);
   const setSelected = useCityStore((s) => s.setSelected);
   const minCameraY = 1.0;
+  const maxCameraY = 120; // Limit camera height to 60% of typical max building heights (~200)
   const minTargetY = 0.0;
 
   // Default setup jump
   useEffect(() => {
     if (controlsRef.current) {
-      // Set default position instantly on mount
-      controlsRef.current.setLookAt(0, 200, 280, 0, 30, 0, false);
+      // Set default position within the 60% height limit
+      controlsRef.current.setLookAt(0, 100, 280, 0, 30, 0, false);
     }
   }, []);
 
@@ -55,7 +56,7 @@ export function CameraController() {
     const posVec = new THREE.Vector3(px, py, pz);
     
     const dir = new THREE.Vector3().subVectors(posVec, targetVec).normalize();
-    const desiredDistance = Math.max(45, source === 'search' ? h * 2.0 : h * 2.3);
+    const desiredDistance = Math.max(45, source === 'search' ? h * 2.0 : h * 1.6);
     
     const finalPos = targetVec.clone().add(dir.multiplyScalar(desiredDistance));
 
@@ -82,16 +83,18 @@ export function CameraController() {
     }
 
     // Hard floor guard: prevent any camera/target state from slipping below ground.
+    // Also enforce maximum height limit (60% of max building heights)
     const camPos = controls.camera.position;
     controls.getTarget(tmpTargetRef.current);
 
     const nextTargetY = Math.max(tmpTargetRef.current.y, minTargetY);
     const nextCameraY = Math.max(camPos.y, nextTargetY + minCameraY);
+    const clampedCameraY = Math.min(nextCameraY, maxCameraY); // Enforce max height
 
-    if (nextTargetY !== tmpTargetRef.current.y || nextCameraY !== camPos.y) {
+    if (nextTargetY !== tmpTargetRef.current.y || clampedCameraY !== camPos.y) {
       controls.setLookAt(
         camPos.x,
-        nextCameraY,
+        clampedCameraY,
         camPos.z,
         tmpTargetRef.current.x,
         nextTargetY,
@@ -102,9 +105,10 @@ export function CameraController() {
   });
 
   // Handle constraints easing when selected
-  // Relax maxPolarAngle to let user look up at building from street level slightly more aggressively
-  const baseMaxPolar = Math.PI * 0.44; // ~79 deg
-  const relaxedMaxPolar = Math.PI * 0.47; // ~85 deg
+  // Limit vertical tilt to prevent top-down aerial views - keep camera at mid-level perspective
+  const baseMinPolar = Math.PI * 0.35; // ~63 deg - prevents overhead/top-down view
+  const baseMaxPolar = Math.PI * 0.6; // ~108 deg - prevents looking straight up
+  const relaxedMaxPolar = Math.PI * 0.65; // ~117 deg - slightly more upward tilt when building selected
   
   // Universal ESC handler mapping directly into smooth Top-down aerial resets
   useEffect(() => {
@@ -113,7 +117,7 @@ export function CameraController() {
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
       if (e.key === 'Escape') {
          setSelected(null);
-         controlsRef.current?.setLookAt(0, 200, 280, 0, 30, 0, true);
+         controlsRef.current?.setLookAt(0, 100, 280, 0, 30, 0, true);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -126,8 +130,8 @@ export function CameraController() {
       makeDefault
       minDistance={25}
       maxDistance={480}
-      minPolarAngle={0.05} // Ban completely vertical upside-down zenith
-      maxPolarAngle={selectedTicker ? relaxedMaxPolar : baseMaxPolar} // Ban underground views dynamically
+      minPolarAngle={baseMinPolar} // Prevent top-down overhead view - keep at mid-level
+      maxPolarAngle={selectedTicker ? relaxedMaxPolar : baseMaxPolar} // Prevent looking straight up
       smoothTime={0.15} // Enforce natural mouse inertia 
       draggingSmoothTime={0.15}
       dollyToCursor={true}
