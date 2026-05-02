@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   description:
     'An immersive 3D visualization that renders every S&P 500 company as a building in a procedurally generated night-time city. Building size is proportional to market capitalization.',
   keywords: ['S&P 500', '3D visualization', 'stock market', 'React Three Fiber', 'market cap'],
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
