@@ -4,7 +4,6 @@ import { CityCanvas } from '@/city/CityCanvas';
 import { HUD } from '@/components/HUD/HUD';
 import { SearchBar } from '@/components/SearchBar/SearchBar';
 import { InfoPanel } from '@/components/InfoPanel/InfoPanel';
-import { SectorLegend } from '@/components/SectorLegend/SectorLegend';
 import { Minimap } from '@/components/Minimap/Minimap';
 import { LoadingScreen } from '@/components/LoadingScreen/LoadingScreen';
 import { useCompanyData } from '@/hooks/useCompanyData';
@@ -19,7 +18,6 @@ export default function Home() {
       <HUD />
       <SearchBar />
       <InfoPanel />
-      <SectorLegend />
       <Minimap />
     </>
   );

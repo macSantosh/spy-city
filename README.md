@@ -4,7 +4,7 @@
 
 Spy City renders every S&P 500 company as a building in a procedurally generated 3D night-time metropolis. Building height and footprint are derived from market capitalization — Apple and Microsoft tower as skyscrapers, smaller companies form the low-rise districts. Navigate the financial skyline, search for companies, and explore live market data in an immersive 3D environment.
 
-**Live Demo:** [Coming Soon]
+**Live Demo:** [https://spy-city.vercel.app/](https://spy-city.vercel.app/)
 
 **Portfolio Project** • **Open Source** • **Financial Education**
 
