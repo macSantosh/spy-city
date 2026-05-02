@@ -8,7 +8,7 @@ Spy City renders every S&P 500 company as a building in a procedurally generated
 
 **Portfolio Project** • **Open Source** • **Financial Education**
 
-![Spy City Night Skyline](https://via.placeholder.com/1200x600/000814/ffffff?text=Spy+City+Preview)
+![Spy City Night Skyline](public/spy-city.png)
 
 ---
 
