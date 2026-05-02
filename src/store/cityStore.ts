@@ -22,10 +22,6 @@ interface CityState {
   flyTarget: FlyTarget | null;
   setFlyTarget: (target: FlyTarget | null) => void;
 
-  // Sector visibility filters
-  sectorFilters: Set<string>;
-  toggleSector: (sector: string) => void;
-
   // City rendering mode
   cityMode: CityMode;
   setCityMode: (mode: CityMode) => void;
@@ -48,18 +44,6 @@ export const useCityStore = create<CityState>((set, get) => ({
 
   flyTarget: null,
   setFlyTarget: (target) => set({ flyTarget: target }),
-
-  sectorFilters: new Set(),
-  toggleSector: (sector) =>
-    set((s) => {
-      const next = new Set(s.sectorFilters);
-      if (next.has(sector)) {
-        next.delete(sector);
-      } else {
-        next.add(sector);
-      }
-      return { sectorFilters: next };
-    }),
 
   cityMode: 'normal',
   setCityMode: (mode) => set({ cityMode: mode }),
